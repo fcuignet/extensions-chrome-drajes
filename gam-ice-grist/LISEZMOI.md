@@ -1,4 +1,4 @@
-# GAM → Grist · Stats ICE (version 0.2.0)
+# GAM → Grist · Stats ICE (version 0.2.1)
 
 Extension Chrome qui lit l'édition « Stats ICE » de GAM et met à jour la table `ICE_Accueils` du document Grist « ICE - Programmation des contrôles ».
 

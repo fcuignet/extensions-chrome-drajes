@@ -98,7 +98,16 @@ async function grist(chemin, options) {
   });
   const texte = await r.text();
   if (!r.ok) {
-    if (r.status === 401 || r.status === 403) throw new Error("Grist refuse l'accès (clé API ou droits sur le document).");
+    const site = c.gristUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (/invalid api key/i.test(texte)) {
+      throw new Error("Grist ne reconnaît pas la clé API. Elle doit venir du même service Grist que le document (" +
+        site + ", et non grist.numerique.gouv.fr) : sur " + site + ", menu du profil → Paramètres du profil → API. " +
+        "Collez-la entière, puis « Enregistrer ».");
+    }
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Grist refuse l'accès : le compte de cette clé n'a pas les droits d'édition sur le document " + c.docId + ".");
+    }
+    if (r.status === 404) throw new Error("Document ou table introuvable sur " + site + " (vérifiez l'identifiant du document et le nom de la table).");
     throw new Error("Grist " + r.status + " : " + texte.slice(0, 200));
   }
   return texte ? JSON.parse(texte) : {};
@@ -247,16 +256,25 @@ async function initialiser() {
   const c = await config();
   for (const k of Object.keys(DEFAUTS)) $(k).value = c[k];
 
-  $("btnEnregistrer").addEventListener("click", async () => {
+  // Enregistre les champs ; la clé est nettoyée (espaces, guillemets, « Bearer » collés par mégarde).
+  async function enregistrer() {
     const valeurs = {};
     for (const k of Object.keys(DEFAUTS)) valeurs[k] = $(k).value.trim();
+    valeurs.apiKey = valeurs.apiKey.replace(/^bearer\s+/i, "").replace(/[\s"'«»​-‍﻿]/g, "");
+    valeurs.gristUrl = valeurs.gristUrl.replace(/\/+$/, "");
+    $("apiKey").value = valeurs.apiKey;
     await chrome.storage.local.set(valeurs);
+  }
+
+  $("btnEnregistrer").addEventListener("click", async () => {
+    await enregistrer();
     $("etatGrist").textContent = "Paramètres enregistrés.";
     $("etatGrist").className = "etat ok";
   });
 
   $("btnTesterGrist").addEventListener("click", async () => {
     try {
+      await enregistrer(); // teste toujours la clé affichée, même si « Enregistrer » a été oublié
       const n = await testerGrist();
       $("etatGrist").textContent = "Accès à la table vérifié (" + n + " colonnes).";
       $("etatGrist").className = "etat ok";
