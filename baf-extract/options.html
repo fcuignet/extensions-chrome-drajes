@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BAFA-BAFD — Extraction : connexion à Grist</title>
+<style>
+  body { font-family: Marianne, Arial, sans-serif; color: #161616; max-width: 640px; margin: 32px auto; padding: 0 16px; font-size: 15px; line-height: 1.5; }
+  h1 { color: #000091; font-size: 22px; }
+  label { display: block; font-weight: 700; margin-top: 16px; }
+  .aide { font-weight: 400; color: #666; font-size: 13px; display: block; }
+  input { width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px; border: 0; border-bottom: 2px solid #3a3a3a; background: #eee; border-radius: 4px 4px 0 0; font: inherit; }
+  .actions { margin-top: 24px; display: flex; gap: 8px; }
+  button { padding: 8px 16px; border-radius: 4px; border: 1px solid #000091; background: #000091; color: #fff; font: inherit; cursor: pointer; }
+  button.secondaire { background: #fff; color: #000091; }
+  #message { margin-top: 16px; min-height: 1.5em; }
+  .ok { color: #18753c; } .erreur { color: #ce0500; }
+  .encadre { background: #f6f6f6; padding: 12px 16px; border-left: 4px solid #000091; margin-top: 24px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>Connexion à Grist</h1>
+  <p>Ces réglages servent au bouton « Grist » du panneau d'extraction. Ils restent dans ce navigateur.</p>
+
+  <label for="url">Adresse du site Grist
+    <span class="aide">Par exemple https://drajes-test.getgrist.com</span></label>
+  <input id="url" type="url" placeholder="https://…getgrist.com">
+
+  <label for="doc">Identifiant du document
+    <span class="aide">Document « Formation - Gestion des OF » : goAigiQY7UB8jt8yJfAao8</span></label>
+  <input id="doc" type="text">
+
+  <label for="cle">Clé d'API Grist
+    <span class="aide">Dans Grist : menu du profil, « Paramètres du profil », rubrique « API ».</span></label>
+  <input id="cle" type="password" autocomplete="off">
+
+  <div class="actions">
+    <button id="enregistrer">Enregistrer</button>
+    <button id="tester" class="secondaire">Tester la connexion</button>
+  </div>
+  <div id="message" role="status" aria-live="polite"></div>
+
+  <div class="encadre">
+    La clé d'API donne accès à tous vos documents Grist avec vos droits. Elle est conservée uniquement dans ce profil de navigateur (stockage local de l'extension), n'est envoyée qu'au site Grist indiqué ci-dessus, et peut être révoquée à tout moment en la régénérant dans Grist.
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

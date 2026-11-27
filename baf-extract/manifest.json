@@ -1,8 +1,17 @@
 {
   "manifest_version": 3,
   "name": "BAFA-BAFD — Extraction des recherches",
-  "version": "0.1.0",
-  "description": "Exporte en CSV ou JSON l'intégralité des résultats d'une recherche effectuée dans l'application d'administration BAFA-BAFD.",
+  "version": "0.2.0",
+  "description": "Exporte en CSV ou JSON les résultats d'une recherche de l'application d'administration BAFA-BAFD, et envoie les sessions vers Grist.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.getgrist.com/*",
+    "https://grist.numerique.gouv.fr/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://administration.bafa-bafd.jeunes.gouv.fr/baf-administration/*"],
@@ -12,7 +21,7 @@
     },
     {
       "matches": ["https://administration.bafa-bafd.jeunes.gouv.fr/baf-administration/*"],
-      "js": ["lib.js", "content.js"],
+      "js": ["lib.js", "gristmap.js", "content.js"],
       "css": ["panel.css"],
       "run_at": "document_start"
     }

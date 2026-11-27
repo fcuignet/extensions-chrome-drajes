@@ -114,6 +114,28 @@
     return { rows, total, displayed };
   }
 
+  // Détail d'une session et liste de ses candidats (mêmes appels que les écrans de l'application)
+  const API = '/baf-administration/api';
+  async function lire(res) {
+    if (res.status === 401 || res.status === 403) throw new Error('Session expirée ou droits insuffisants : rechargez la page et reconnectez-vous.');
+    if (!res.ok) throw new Error(`Erreur du serveur (HTTP ${res.status}).`);
+    return res.json();
+  }
+  async function getDetail(id, signal) {
+    return lire(await fetch(`${API}/session/v1/${encodeURIComponent(id)}`, {
+      credentials: 'include', signal,
+      headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
+    }));
+  }
+  async function getCandidats(id, signal) {
+    const data = await lire(await fetch(`${API}/candidats/v1/liste-candidats-session`, {
+      method: 'POST', credentials: 'include', signal,
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ sesId: id, pageNumber: 0, pageSize: 500, pageOrderDTOs: [{ sortField: 'nomFamille', sortOrder: 'ASC' }] })
+    }));
+    return Array.isArray(data?.content) ? data.content : [];
+  }
+
   // Aplatit les objets imbriqués (a.b.c) ; les tableaux sont gardés en JSON.
   function flatten(obj, prefix = '', out = {}) {
     for (const [k, v] of Object.entries(obj || {})) {
@@ -157,5 +179,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }
 
-  globalThis.BafExtract = { labelFor, isSearchUrl, fetchAll, flatten, toCSV, timestamp, download, PAGE_SIZE };
+  globalThis.BafExtract = { labelFor, isSearchUrl, fetchAll, flatten, toCSV, timestamp, download, getDetail, getCandidats, sleep, PAGE_SIZE };
 })();
