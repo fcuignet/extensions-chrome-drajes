@@ -147,17 +147,27 @@ async function lire() {
     const res = await gam("statsIce", { exercices: voulus });
     const it = ICE.lireRapport(res, null, voulus === "tous" ? null : voulus);
     lues = it.lignes;
+    const parExercice = {};
+    for (const l of it.lignes) parExercice[l.Exercice] = (parExercice[l.Exercice] || 0) + 1;
     Object.assign(diagnostic, {
       exercicesDisponibles: res.exercicesDisponibles, exercicesDemandes: res.exercicesDemandes,
+      nbPages: res.nbPages, pagesNonAlignees: res.pagesNonAlignees,
       disposition: it.disposition, correspondances: it.correspondances,
       avertissements: it.avertissements, erreurs: it.erreurs, nbLignes: it.lignes.length,
+      lignesParExercice: parExercice,
       grilles: (res.grilles || []).slice(0, 4).map((g) => g.slice(0, 40)),
       texte: (res.texte || "").slice(0, 1500)
     });
+    if (res.nbPages) journal("Rapport GAM lu sur " + res.nbPages + " page(s).");
+    if (res.pagesNonAlignees) {
+      journal("Certaines pages du rapport n'ont pas la même disposition que la première : vérifiez le tableau avant d'écrire.", "erreur");
+    }
     if (voulus !== "tous") {
       const absents = voulus.filter((e) => !(res.exercicesDisponibles || []).includes(e));
       if (absents.length) journal("Exercice(s) absent(s) de GAM : " + absents.join(", ") + ".", "erreur");
     }
+    const sansLigne = (res.exercicesDemandes || []).filter((e) => !parExercice[e]);
+    if (sansLigne.length) journal("Aucun accueil dans le rapport pour : " + sansLigne.join(", ") + ".");
     (it.avertissements || []).forEach((a) => journal(a, "erreur"));
     it.erreurs.forEach((e) => journal(e, "erreur"));
     const nbEx = new Set(it.lignes.map((l) => l.Exercice)).size;

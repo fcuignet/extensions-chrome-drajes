@@ -8,7 +8,8 @@
  *   "etat"                → connexion à GAM et département affiché
  *   "statsIce", {exercices: [...] | "tous"}
  *                         → édition « Stats ICE » (StatsIceDepartemental) : une ligne par
- *                           exercice et par département de la région, plus le total régional
+ *                           exercice et par département de la région, plus le total régional ;
+ *                           toutes les pages du rapport sont lues et recollées
  */
 async function gamCommand(cmd, arg) {
   const DEPS = [
@@ -47,21 +48,41 @@ async function gamCommand(cmd, arg) {
     return m.map((r) => Array.from(r || [], (x) => (x === undefined ? "" : x)));
   }
 
-  // Tous les tableaux « feuilles » du rapport, sans lignes ni colonnes vides.
-  function grilles(racine) {
-    const feuilles = [...racine.querySelectorAll("table")].filter((t) => !t.querySelector("table"));
-    const res = [];
-    for (const t of feuilles) {
-      let m = matrice(t).filter((r) => r.some((c) => c));
+  // Tableaux « feuilles » d'une page du rapport : matrices brutes, sans lignes vides.
+  function tableauxPage(racine) {
+    return [...racine.querySelectorAll("table")]
+      .filter((t) => !t.querySelector("table"))
+      .map((t) => matrice(t).filter((r) => r.some((c) => c)))
+      .filter((m) => m.length);
+  }
+
+  // Recolle les pages du rapport (seule la page 1 porte les en-têtes de colonnes) :
+  // un tableau d'une page suivante prolonge le plus long tableau de même largeur déjà lu.
+  // Les colonnes vides sont retirées après assemblage, pour que toutes les pages restent alignées.
+  function assembler(pages) {
+    const largeur = (m) => Math.max(0, ...m.map((r) => r.length));
+    const res = (pages[0] || []).map((m) => m.slice());
+    let nonAlignes = 0;
+    for (const page of pages.slice(1)) {
+      for (const m of page) {
+        const cible = res.filter((x) => largeur(x) === largeur(m))
+          .sort((a, b) => b.length - a.length)[0];
+        if (cible) cible.push(...m);
+        else { res.push(m.slice()); nonAlignes += 1; }
+      }
+    }
+    const grilles = [];
+    for (const m of res) {
       if (m.length < 2) continue;
-      const nb = Math.max(...m.map((r) => r.length));
+      const nb = largeur(m);
       const garder = [];
       for (let c = 0; c < nb; c += 1) if (m.some((r) => r[c])) garder.push(c);
-      m = m.map((r) => garder.map((c) => r[c] || ""));
-      res.push(m);
+      grilles.push(m.map((r) => garder.map((c) => r[c] || "")));
     }
-    return res;
+    return { grilles, nonAlignes };
   }
+
+  // Fin des fonctions utilitaires.
 
   try {
     if (cmd === "etat") {
@@ -150,11 +171,42 @@ async function gamCommand(cmd, arg) {
           if (!enCours && txt && (demandes.some((l) => txt.includes(l)) || i > 60)) contenu = vis;
         }
         if (!contenu) throw new Error("Le rapport ne s'est pas affiché (délai dépassé).");
+
+        // Le rapport est découpé en pages (environ 48 lignes chacune) : on les lit toutes
+        // avec le bouton « Page suivante » de la barre d'outils du rapport.
+        const pages = [tableauxPage(contenu)];
+        const textes = [norm(contenu.innerText)];
+        const outil = (suffixe) => f.contentDocument.querySelector('[id^="' + idRv + '_"][id$="' + suffixe + '"]');
+        const affiche = (el) => !!el && f.contentWindow.getComputedStyle(el).display !== "none";
+        const numero = () => { const c = outil("_CurrentPage"); return c ? c.value : ""; };
+        for (let p = 2; p <= 50; p += 1) {
+          const suivant = outil("_Next_ctl00"); // bouton actif ; sa version grisée est « _Next_ctl01 »
+          if (!affiche(suivant)) break;
+          const avant = numero();
+          suivant.click();
+          let page = null;
+          for (let i = 0; i < 200 && !page; i += 1) {
+            await wait(300);
+            let enCours = false;
+            try { const rv = f.contentWindow.$find(idRv); enCours = !!(rv && rv.get_isLoading()); } catch (e) { enCours = false; }
+            const vis = f.contentDocument.querySelector('[id^="VisibleReportContent"]') ||
+              f.contentDocument.querySelector('div[id$="_oReportDiv"]');
+            if (!enCours && numero() && numero() !== avant && vis && norm(vis.innerText)) page = vis;
+          }
+          if (!page) throw new Error("La page " + p + " du rapport ne s'est pas affichée (délai dépassé).");
+          pages.push(tableauxPage(page));
+          textes.push(norm(page.innerText));
+        }
+        if (affiche(outil("_Next_ctl00"))) throw new Error("Le rapport compte plus de 50 pages : choisissez moins d'exercices.");
+
+        const { grilles, nonAlignes } = assembler(pages);
         return {
           exercicesDisponibles: dispo,
           exercicesDemandes: demandes,
-          grilles: grilles(contenu),
-          texte: norm(contenu.innerText).slice(0, 4000)
+          nbPages: pages.length,
+          pagesNonAlignees: nonAlignes,
+          grilles,
+          texte: textes.join(" ").slice(0, 4000)
         };
       } finally {
         f.remove();
