@@ -6,8 +6,8 @@ Elles agissent uniquement dans la session de l'utilisateur, avec ses droits. Auc
 | Dossier | Application source | Destination Grist | État |
 |---|---|---|---|
 | `gam-ice-grist/` | GAM (back-office ACM) — édition « Stats ICE » | ICE - Programmation des contrôles, table `ICE_Accueils` | 0.1.0, à tester en conditions réelles |
-| `baf-extract/` | Application d'administration BAFA-BAFD — sessions | Formation - Gestion des OF | à verser |
-| `carte-pro-grist/` | recherche-educateur.sports.gouv.fr — cartes professionnelles | table des stagiaires (FOROMES) | à verser |
+| `baf-extract/` | Application d'administration BAFA-BAFD — recherches de sessions | export CSV / JSON (envoi vers Grist prévu en 0.2) | 0.1.0 |
+| `carte-pro-grist/` | recherche-educateur.sports.gouv.fr — cartes professionnelles | table des stagiaires (FOROMES) | 0.4.0 |
 
 ## Installer une extension
 

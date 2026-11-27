@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "BAFA-BAFD — Extraction des recherches",
+  "version": "0.1.0",
+  "description": "Exporte en CSV ou JSON l'intégralité des résultats d'une recherche effectuée dans l'application d'administration BAFA-BAFD.",
+  "content_scripts": [
+    {
+      "matches": ["https://administration.bafa-bafd.jeunes.gouv.fr/baf-administration/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://administration.bafa-bafd.jeunes.gouv.fr/baf-administration/*"],
+      "js": ["lib.js", "content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_start"
+    }
+  ]
+}

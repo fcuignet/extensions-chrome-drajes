@@ -1,0 +1,93 @@
+/* Panneau d'export — couleurs inspirées du DSFR */
+#baf-extract-panel.baf-x {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: Marianne, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #161616;
+}
+.baf-x__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 4px;
+  background: #000091;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 18, 0.25);
+}
+.baf-x__toggle:hover { background: #1212ff; }
+.baf-x__toggle:focus-visible, .baf-x__btn:focus-visible { outline: 2px solid #0a76f6; outline-offset: 2px; }
+.baf-x__badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #fff;
+  color: #000091;
+  font-size: 12px;
+  text-align: center;
+}
+.baf-x__body {
+  width: 340px;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #dddddd;
+  border-top: 4px solid #000091;
+  box-shadow: 0 4px 12px rgba(0, 0, 18, 0.2);
+}
+.baf-x__body[hidden] { display: none; }
+.baf-x__title { margin: 0 0 8px; font-weight: 700; font-size: 15px; }
+.baf-x__hint { margin: 0 0 8px; color: #666; }
+.baf-x__hint[hidden] { display: none; }
+.baf-x__list { list-style: none; margin: 0; padding: 0; }
+.baf-x__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.baf-x__info { display: flex; flex-direction: column; }
+.baf-x__info small { color: #666; }
+.baf-x__warn { color: #b34000 !important; }
+.baf-x__crit { margin-top: 4px; }
+.baf-x__crit summary { cursor: pointer; color: #000091; font-size: 12px; }
+.baf-x__crit pre {
+  margin: 4px 0 0;
+  padding: 6px;
+  max-height: 140px;
+  overflow: auto;
+  background: #f6f6f6;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.baf-x__actions { display: flex; gap: 4px; align-items: flex-start; }
+.baf-x__btn {
+  padding: 4px 10px;
+  border: 1px solid #000091;
+  border-radius: 4px;
+  background: #000091;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.baf-x__btn--secondary { background: #fff; color: #000091; }
+.baf-x__btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.baf-x__btn[hidden] { display: none; }
+.baf-x__status { margin: 8px 0 4px; min-height: 1.4em; }
+.baf-x__status--warn { color: #b34000; }
+.baf-x__status--error { color: #ce0500; }
