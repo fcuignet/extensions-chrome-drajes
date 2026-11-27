@@ -1,21 +1,29 @@
 /*
- * Lecture du rapport « Stats ICE » : à partir d'une grille (tableau de lignes de textes),
- * retrouve pour chaque exercice les cinq comptages attendus par la table Grist ICE_Accueils.
- * Deux dispositions sont reconnues : un exercice par ligne, ou un exercice par colonne.
- * Les colonnes (ou lignes) sont repérées par leur libellé ; un comptage non trouvé ou
- * non numérique empêche l'écriture de la ligne correspondante.
+ * Lecture du rapport « Stats ICE » de GAM.
+ * Le rapport donne une ligne par exercice et par département de la région, puis une
+ * ligne « Total région » par exercice :
+ *   Exercices | Régions | Départements | accueil avec hébergement | accueil de scoutisme |
+ *   accueil sans hébergement - Accueil de jeunes | - Accueil de loisirs | - Accueil périscolaire | Total Accueils
+ * Les colonnes sont repérées par leur libellé. Une ligne n'est retenue que si ses cinq
+ * comptages sont des nombres ; la somme des départements est comparée au total régional.
  */
 (function (racine) {
   "use strict";
 
   const EX = /^(\d{4})\s*[\/-]\s*(\d{4})$/;
 
+  const DEPARTEMENTS = {
+    "ardennes": "08", "aube": "10", "marne": "51", "haute-marne": "52",
+    "meurthe-et-moselle": "54", "meuse": "55", "moselle": "57",
+    "bas-rhin": "67", "haut-rhin": "68", "vosges": "88"
+  };
+
   const CHAMPS = [
+    { id: "Avec_hebergement", libelle: "Avec hébergement", re: /avec\s+heberg/ },
     { id: "Scoutisme", libelle: "Scoutisme", re: /scout/ },
     { id: "ASH_Jeunes", libelle: "Sans héb. – accueil de jeunes", re: /jeune/, sansHeb: true },
     { id: "ASH_Loisirs", libelle: "Sans héb. – accueil de loisirs", re: /loisir/, sansHeb: true },
-    { id: "ASH_Periscolaire", libelle: "Sans héb. – périscolaire", re: /peri\s*-?\s*scol/, sansHeb: true },
-    { id: "Avec_hebergement", libelle: "Avec hébergement", re: /avec\s+heberg/ }
+    { id: "ASH_Periscolaire", libelle: "Sans héb. – périscolaire", re: /peri\s*-?\s*scol/, sansHeb: true }
   ];
 
   // Libellés à ne jamais prendre pour un nombre d'accueils.
@@ -32,7 +40,7 @@
     return m ? m[1] + "/" + m[2] : null;
   }
 
-  // Entier, 0 pour une cellule vide ou « - », null si la cellule n'est pas un nombre.
+  // Entier ; 0 pour une cellule vide ou « - » ; null si la cellule n'est pas un nombre.
   function nombre(s) {
     const t = String(s == null ? "" : s).replace(/[\s  ]/g, "");
     if (t === "" || t === "-") return 0;
@@ -42,6 +50,10 @@
   function estNombreRenseigne(s) {
     const t = String(s == null ? "" : s).trim();
     return t !== "" && nombre(t) !== null;
+  }
+
+  function codeDepartement(libelle) {
+    return DEPARTEMENTS[normLab(libelle).replace(/\s+/g, "-")] || null;
   }
 
   // Pour chaque champ, l'indice du premier libellé qui lui correspond.
@@ -59,146 +71,114 @@
         index[ch.id] = trouves[0].k;
         correspondances[ch.id] = trouves[0].l;
         if (trouves.length > 1) {
-          ambiguites.push(ch.libelle + " : plusieurs libellés possibles (" +
-            trouves.map((x) => "« " + x.l + " »").join(", ") + "), le premier est retenu.");
+          ambiguites.push(ch.libelle + " : plusieurs colonnes possibles (" +
+            trouves.map((x) => "« " + x.l + " »").join(", ") + "), la première est retenue.");
         }
       }
     }
     return { index, correspondances, ambiguites };
   }
 
-  function construire(exercicesEtValeurs, code, voulus, manquants) {
-    const lignes = [];
-    const erreurs = [];
-    const vus = new Set();
-    for (const { ex, valeurs } of exercicesEtValeurs) {
-      if (!ex || vus.has(ex)) continue;
-      if (voulus && !voulus.includes(ex)) continue;
-      vus.add(ex);
-      if (manquants.length) {
-        erreurs.push(ex + " : comptage introuvable (" + manquants.join(", ") + ").");
-        continue;
-      }
-      const ligne = { Exercice: ex, Departement: code };
-      const invalides = [];
-      for (const ch of CHAMPS) {
-        const v = nombre(valeurs[ch.id]);
-        if (v === null) invalides.push(ch.libelle + " = « " + valeurs[ch.id] + " »");
-        ligne[ch.id] = v;
-      }
-      if (invalides.length) erreurs.push(ex + " : valeur non numérique (" + invalides.join(", ") + ").");
-      else lignes.push(ligne);
-    }
-    return { lignes, erreurs };
-  }
-
-  function interpreter(grille, code, voulus) {
+  function interpreter(grille, codeParDefaut, voulus) {
     const g = (grille || []).map((r) => (r || []).map((c) => String(c == null ? "" : c).trim()));
-    const vide = { lignes: [], erreurs: [], disposition: null, correspondances: {}, ambiguites: [] };
-    if (!g.length) return vide;
+    const res = { lignes: [], erreurs: [], avertissements: [], disposition: null, correspondances: {} };
+    if (!g.length) return res;
     const nbCol = Math.max(...g.map((r) => r.length));
 
-    const ligneMultiEx = g.findIndex((r) => r.filter((c) => exercice(c)).length >= 2);
+    // Lignes de données : un exercice et au moins deux nombres.
     const lignesEx = g.map((r, i) => ({ i, j: r.findIndex((c) => exercice(c)) }))
       .filter(({ i, j }) => j >= 0 && g[i].filter((c, k) => k !== j && estNombreRenseigne(c)).length >= 2);
+    if (!lignesEx.length) return res;
 
-    // Disposition 1 : un exercice par ligne, un type d'accueil par colonne.
-    if (ligneMultiEx < 0 && lignesEx.length) {
-      const premiere = lignesEx[0].i;
-      const entetes = g.slice(0, premiere).filter((r) => {
-        const pleine = r.length === nbCol && r.every((c) => c);
-        return !(pleine && new Set(r).size === 1); // titre sur toute la largeur : ignoré
-      });
-      const libelles = [];
-      for (let c = 0; c < nbCol; c += 1) {
-        const parts = [];
-        for (const r of entetes) {
-          const v = r[c] || "";
-          if (v && !parts.includes(v)) parts.push(v);
-        }
-        libelles.push(normLab(parts.join(" ")));
+    // Libellés de colonnes : concaténation des lignes d'en-tête (titre pleine largeur ignoré).
+    const entetes = g.slice(0, lignesEx[0].i).filter((r) => {
+      const pleine = r.length === nbCol && r.every((c) => c);
+      return !(pleine && new Set(r).size === 1);
+    });
+    const libelles = [];
+    for (let c = 0; c < nbCol; c += 1) {
+      const parts = [];
+      for (const r of entetes) {
+        const v = r[c] || "";
+        if (v && !parts.includes(v)) parts.push(v);
       }
-      const { index, correspondances, ambiguites } = associer(libelles);
-      const manquants = CHAMPS.filter((ch) => !(ch.id in index)).map((ch) => ch.libelle);
-      const donnees = lignesEx.map(({ i, j }) => {
-        const valeurs = {};
-        for (const ch of CHAMPS) if (ch.id in index) valeurs[ch.id] = g[i][index[ch.id]];
-        return { ex: exercice(g[i][j]), valeurs };
-      });
-      return { disposition: "un exercice par ligne", correspondances, ambiguites,
-        ...construire(donnees, code, voulus, manquants) };
+      libelles.push(normLab(parts.join(" ")));
+    }
+    const { index, correspondances, ambiguites } = associer(libelles);
+    res.disposition = "un exercice par ligne";
+    res.correspondances = correspondances;
+    res.avertissements.push(...ambiguites);
+    const manquants = CHAMPS.filter((ch) => !(ch.id in index)).map((ch) => ch.libelle);
+    if (manquants.length) {
+      res.erreurs.push("Colonnes introuvables dans le rapport : " + manquants.join(", ") + ".");
+      return res;
+    }
+    const colDep = libelles.findIndex((l) => /departement/.test(l));
+    if (colDep < 0 && !codeParDefaut) {
+      res.erreurs.push("Colonne « Départements » introuvable dans le rapport.");
+      return res;
     }
 
-    // Disposition 2 : un exercice par colonne, un type d'accueil par ligne.
-    let h = ligneMultiEx;
-    if (h < 0) {
-      h = g.findIndex((r) => r.some((c) => exercice(c))
-        && r.filter((c) => !exercice(c) && estNombreRenseigne(c)).length < 2);
-    }
-    if (h >= 0) {
-      const colonnesEx = g[h].map((c, k) => ({ ex: exercice(c), k })).filter((x) => x.ex);
-      const debut = Math.min(...colonnesEx.map((x) => x.k));
-      const libelles = g.map((r, i) => {
-        if (i <= h) return "";
-        const parts = [];
-        for (const v of r.slice(0, debut)) if (v && !parts.includes(v)) parts.push(v);
-        return normLab(parts.join(" "));
-      });
-      const { index, correspondances, ambiguites } = associer(libelles);
-      const manquants = CHAMPS.filter((ch) => !(ch.id in index)).map((ch) => ch.libelle);
-      const donnees = colonnesEx.map(({ ex, k }) => {
-        const valeurs = {};
-        for (const ch of CHAMPS) if (ch.id in index) valeurs[ch.id] = g[index[ch.id]][k];
-        return { ex, valeurs };
-      });
-      return { disposition: "un exercice par colonne", correspondances, ambiguites,
-        ...construire(donnees, code, voulus, manquants) };
+    const vus = new Set();
+    const totaux = {};
+    const sommes = {};
+    for (const { i, j } of lignesEx) {
+      const ex = exercice(g[i][j]);
+      if (voulus && !voulus.includes(ex)) continue;
+      const libDep = colDep >= 0 ? g[i][colDep] : "";
+      const valeurs = {};
+      const invalides = [];
+      for (const ch of CHAMPS) {
+        const v = nombre(g[i][index[ch.id]]);
+        if (v === null) invalides.push(ch.libelle + " = « " + g[i][index[ch.id]] + " »");
+        valeurs[ch.id] = v;
+      }
+      if (/total/i.test(normLab(libDep))) {
+        if (!invalides.length) totaux[ex] = valeurs;
+        continue;
+      }
+      const code = colDep >= 0 ? codeDepartement(libDep) : codeParDefaut;
+      if (!code) {
+        res.erreurs.push(ex + " : département non reconnu « " + libDep + " », ligne ignorée.");
+        continue;
+      }
+      const cle = ex + "|" + code;
+      if (vus.has(cle)) continue;
+      vus.add(cle);
+      if (invalides.length) {
+        res.erreurs.push(ex + " – " + (libDep || code) + " : valeur non numérique (" + invalides.join(", ") + ").");
+        continue;
+      }
+      res.lignes.push({ Exercice: ex, Departement: code, ...valeurs });
+      sommes[ex] = sommes[ex] || Object.fromEntries(CHAMPS.map((ch) => [ch.id, 0]));
+      for (const ch of CHAMPS) sommes[ex][ch.id] += valeurs[ch.id];
     }
 
-    return vide;
+    // Contrôle : somme des départements = total régional du rapport.
+    for (const ex of Object.keys(totaux)) {
+      const ecarts = CHAMPS.filter((ch) => !sommes[ex] || sommes[ex][ch.id] !== totaux[ex][ch.id])
+        .map((ch) => ch.libelle + " : " + (sommes[ex] ? sommes[ex][ch.id] : 0) + " pour " + totaux[ex][ch.id]);
+      if (ecarts.length) res.avertissements.push(ex + " : la somme des départements diffère du total régional (" + ecarts.join(" ; ") + ").");
+    }
+    res.controles = Object.keys(totaux).length;
+    return res;
   }
 
-  // CSV (séparateur virgule, guillemets doubles) → lignes de textes.
-  function lireCsv(texte) {
-    const lignes = [];
-    let ligne = [];
-    let champ = "";
-    let guillemets = false;
-    const t = String(texte || "");
-    for (let i = 0; i < t.length; i += 1) {
-      const c = t[i];
-      if (guillemets) {
-        if (c === '"' && t[i + 1] === '"') { champ += '"'; i += 1; }
-        else if (c === '"') guillemets = false;
-        else champ += c;
-      } else if (c === '"') guillemets = true;
-      else if (c === ",") { ligne.push(champ); champ = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (c === "\r" && t[i + 1] === "\n") i += 1;
-        ligne.push(champ); lignes.push(ligne); ligne = []; champ = "";
-      } else champ += c;
-    }
-    if (champ !== "" || ligne.length) { ligne.push(champ); lignes.push(ligne); }
-    return lignes.filter((r) => r.some((c) => c.trim() !== ""));
-  }
-
-  // Essaie chaque tableau du rapport, puis l'export CSV ; garde la lecture la plus complète.
-  function lireRapport(resultat, code, voulus) {
-    const candidats = [...((resultat && resultat.grilles) || [])];
-    if (resultat && resultat.csv) candidats.push(lireCsv(resultat.csv));
+  // Essaie chaque tableau du rapport et garde la lecture la plus complète.
+  function lireRapport(resultat, codeParDefaut, voulus) {
     let meilleur = null;
-    for (const grille of candidats) {
-      const it = interpreter(grille, code, voulus);
+    for (const grille of (resultat && resultat.grilles) || []) {
+      const it = interpreter(grille, codeParDefaut, voulus);
       if (it.lignes.length && (!meilleur || it.lignes.length > meilleur.lignes.length)) meilleur = it;
       if (!meilleur && it.erreurs.length) meilleur = it;
     }
     return meilleur || {
-      lignes: [], disposition: null, correspondances: {}, ambiguites: [],
+      lignes: [], disposition: null, correspondances: {}, avertissements: [],
       erreurs: ["Format du rapport non reconnu. Utilisez « Copier le diagnostic » et transmettez-le."]
     };
   }
 
-  const api = { CHAMPS, interpreter, lireCsv, lireRapport, exercice, nombre, normLab };
+  const api = { CHAMPS, DEPARTEMENTS, interpreter, lireRapport, exercice, nombre, normLab, codeDepartement };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else racine.ICE = api;
 })(typeof window !== "undefined" ? window : globalThis);

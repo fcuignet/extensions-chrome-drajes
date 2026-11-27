@@ -1,12 +1,14 @@
-# GAM → Grist · Stats ICE (version 0.1.0)
+# GAM → Grist · Stats ICE (version 0.2.0)
 
-Extension Chrome qui lit l'édition « Stats ICE » de GAM pour les départements auxquels vous avez accès, puis met à jour la table `ICE_Accueils` du document Grist « ICE - Programmation des contrôles ».
+Extension Chrome qui lit l'édition « Stats ICE » de GAM et met à jour la table `ICE_Accueils` du document Grist « ICE - Programmation des contrôles ».
+
+L'édition « Stats ICE » (`StatsIceDepartemental`) donne en une seule fois, pour les exercices choisis, une ligne par département de la région et une ligne « Total région ». L'extension n'a donc pas besoin de changer de département dans GAM.
 
 ## Installation
 
-1. Décompresser le dossier `gam-ice-grist`.
+1. Décompresser le dossier `gam-ice-grist` (ou le prendre dans le dépôt).
 2. Dans Chrome, ouvrir `chrome://extensions`, activer le **mode développeur** (en haut à droite).
-3. Cliquer sur **Charger l'extension non empaquetée** et choisir le dossier.
+3. Cliquer sur **Charger l'extension non empaquetée** et choisir le dossier. Pour une mise à jour : bouton **Actualiser** de l'extension.
 4. Épingler l'icône « GAM → Grist (Stats ICE) » dans la barre d'outils.
 
 Si le mode développeur est bloqué sur le poste académique, il faudra passer par l'assistance informatique.
@@ -16,24 +18,26 @@ Si le mode développeur est bloqué sur le poste académique, il faudra passer p
 1. Ouvrir GAM dans un onglet et se connecter.
 2. Cliquer sur l'icône de l'extension : la page de l'outil s'ouvre.
 3. **Section 2** : saisir la clé API Grist (Grist → Paramètres du profil → API), enregistrer, puis « Tester l'accès à la table ».
-4. **Section 3** : choisir les exercices, puis :
-   - « Aperçu du département affiché dans GAM » pour un premier essai, sans changer de département ;
-   - « Lire tous les départements » pour les 10 départements (le département d'origine est remis à la fin).
+4. **Section 3** : choisir les exercices, puis « Lire la statistique ICE ». Le rapport met environ 10 secondes à s'afficher (davantage pour tous les exercices).
 5. **Section 4** : contrôler le tableau (lignes nouvelles en vert, modifiées en jaune avec l'ancienne valeur), puis « Écrire dans Grist ». L'outil relit Grist après l'écriture pour vérifier.
+
+## Contrôles
+
+- Les colonnes sont repérées par leur libellé dans le rapport ; une ligne n'est retenue que si ses cinq comptages sont des nombres (une case vide vaut 0, comme dans le rapport).
+- La somme des départements est comparée à la ligne « Total région » ; un écart est signalé dans le journal.
+- Essai du 27/11/2026 sur 2024/2025 et 2025/2026 : 20 lignes lues, totaux régionaux cohérents (7 625 et 7 649), aucune différence avec les valeurs déjà présentes dans Grist.
 
 ## Ce que fait l'extension, et ce qu'elle ne fait pas
 
-- Elle agit uniquement dans votre session GAM, avec vos droits, en reproduisant ce que vous feriez à la main : choix du département, édition « Stats ICE » (`StatsIceDepartemental`), sélection des exercices, « Afficher le rapport ».
-- Elle n'écrit rien dans GAM. Changer de département modifie seulement le département affiché dans votre session.
-- Dans Grist, elle ne fait que créer ou mettre à jour des lignes, repérées par le couple **Exercice + Département**. Elle ne supprime rien. Colonnes écrites : `Scoutisme`, `ASH_Jeunes`, `ASH_Loisirs`, `ASH_Periscolaire`, `Avec_hebergement`, `Source`.
+- Elle agit uniquement dans votre session GAM, avec vos droits, comme la page « Éditions » de GAM : préparation de l'édition, choix des exercices, « Afficher le rapport ».
+- Elle n'écrit rien dans GAM et ne change pas le département affiché.
+- Dans Grist, elle ne fait que créer ou mettre à jour des lignes, repérées par le couple **Exercice + Département**. Elle ne supprime rien. Colonnes écrites : `Avec_hebergement`, `Scoutisme`, `ASH_Jeunes`, `ASH_Loisirs`, `ASH_Periscolaire`, `Source`.
 - Elle ne lit que des chiffres agrégés, sans donnée nominative.
 - La clé API Grist reste dans ce navigateur (stockage local de l'extension).
 
-## Si les chiffres ne sont pas reconnus
+## En cas de problème
 
-Le format du rapport n'a pas encore pu être vu de bout en bout. L'outil repère les colonnes par leur libellé (scoutisme, accueil de jeunes, de loisirs, périscolaire, avec hébergement) et refuse d'écrire une ligne s'il manque un comptage ou si une valeur n'est pas un nombre.
-
-En cas d'erreur ou de doute : cliquer sur **Copier le diagnostic** et transmettre le texte copié (il ne contient que les tableaux du rapport Stats ICE).
+Cliquer sur **Copier le diagnostic** et transmettre le texte copié (il ne contient que le tableau chiffré du rapport).
 
 ## Étape suivante prévue
 

@@ -1,66 +1,67 @@
-// Tests de lecture du rapport Stats ICE (dispositions possibles, valeurs invalides, CSV).
+// Tests de lecture du rapport Stats ICE, au format réellement renvoyé par GAM (27/11/2026).
 const assert = require("assert");
 const ICE = require(process.argv[2]);
 
-// 1. Un exercice par ligne, en-tête sur deux niveaux (cellules fusionnées recopiées), titre pleine largeur.
-const g1 = [
-  ["Statistiques ICE", "Statistiques ICE", "Statistiques ICE", "Statistiques ICE", "Statistiques ICE", "Statistiques ICE", "Statistiques ICE"],
-  ["Exercice", "Accueil avec hébergement", "Accueil de scoutisme", "Sans hébergement", "Sans hébergement", "Sans hébergement", "Total"],
-  ["Exercice", "Accueil avec hébergement", "Accueil de scoutisme", "Accueil de jeunes", "Accueil de loisirs", "Accueil périscolaire", "Total"],
-  ["2024/2025", "120", "35", "12", "410", "180", "757"],
-  ["2025/2026", "1 102", "", "10", "398", "175", "1685"]
+const ENTETE = ["Exercices", "Régions", "Départements", "accueil avec hébergement", "accueil de scoutisme",
+  "accueil sans hébergement - Accueil de jeunes", "accueil sans hébergement - Accueil de loisirs",
+  "accueil sans hébergement - Accueil périscolaire", "Total Accueils"];
+const L = (ex, dep, v) => [ex, "Grand-Est", dep, ...v];
+const rapport = [
+  ENTETE,
+  L("2024/2025", "Ardennes", ["140", "13", "7", "118", "107", "385"]),
+  L("2024/2025", "Bas-Rhin", ["388", "84", "", "339", "545", "1356"]),
+  L("2024/2025", "Meurthe-et-Moselle", ["193", "43", "7", "285", "436", "964"]),
+  L("2024/2025", "Total région", ["721", "140", "14", "742", "1088", "2705"]),
+  L("2025/2026", "Haute-Marne", ["125", "11", "", "71", "70", "277"]),
+  L("2025/2026", "Total région", ["125", "11", "0", "71", "70", "277"])
 ];
-let r = ICE.interpreter(g1, "54", ["2025/2026"]);
-assert.strictEqual(r.disposition, "un exercice par ligne");
+
+// 1. Lecture complète : une ligne par exercice et département, total régional contrôlé.
+let r = ICE.interpreter(rapport, null, null);
 assert.deepStrictEqual(r.erreurs, []);
-assert.deepStrictEqual(r.lignes, [{ Exercice: "2025/2026", Departement: "54", Scoutisme: 0, ASH_Jeunes: 10, ASH_Loisirs: 398, ASH_Periscolaire: 175, Avec_hebergement: 1102 }]);
-r = ICE.interpreter(g1, "54", null);
+assert.deepStrictEqual(r.avertissements, []);
+assert.strictEqual(r.controles, 2);
+assert.strictEqual(r.lignes.length, 4);
+assert.deepStrictEqual(r.lignes[1], { Exercice: "2024/2025", Departement: "67", Avec_hebergement: 388, Scoutisme: 84, ASH_Jeunes: 0, ASH_Loisirs: 339, ASH_Periscolaire: 545 });
+assert.strictEqual(r.lignes[3].Departement, "52");
+
+// 2. Filtre sur les exercices demandés.
+r = ICE.interpreter(rapport, null, ["2025/2026"]);
+assert.deepStrictEqual(r.lignes.map((l) => l.Exercice + "|" + l.Departement), ["2025/2026|52"]);
+
+// 3. Total régional incohérent : avertissement, lignes conservées.
+const r3 = rapport.map((l) => l.slice());
+r3[4][3] = "700";
+r = ICE.interpreter(r3, null, ["2024/2025"]);
+assert.strictEqual(r.lignes.length, 3);
+assert.ok(r.avertissements[0].includes("total régional"));
+
+// 4. Département inconnu : ligne ignorée avec erreur.
+const r4 = rapport.map((l) => l.slice());
+r4[1][2] = "Corrèze";
+r = ICE.interpreter(r4, null, ["2024/2025"]);
 assert.strictEqual(r.lignes.length, 2);
+assert.ok(r.erreurs[0].includes("Corrèze"));
 
-// 2. Un exercice par colonne, regroupement « Sans hébergement » sur plusieurs lignes.
-const g2 = [
-  ["Type d'accueil", "Type d'accueil", "2023/2024", "2024/2025"],
-  ["Avec hébergement", "Avec hébergement", "100", "110"],
-  ["Scoutisme", "Scoutisme", "20", "22"],
-  ["Sans hébergement", "Accueil de jeunes", "5", "6"],
-  ["Sans hébergement", "Accueil de loisirs", "300", "310"],
-  ["Sans hébergement", "Accueil périscolaire", "150", "160"],
-  ["Total", "Total", "575", "608"]
-];
-r = ICE.interpreter(g2, "57", ["2024/2025"]);
-assert.strictEqual(r.disposition, "un exercice par colonne");
-assert.deepStrictEqual(r.lignes, [{ Exercice: "2024/2025", Departement: "57", Scoutisme: 22, ASH_Jeunes: 6, ASH_Loisirs: 310, ASH_Periscolaire: 160, Avec_hebergement: 110 }]);
+// 5. Valeur non numérique : ligne refusée.
+const r5 = rapport.map((l) => l.slice());
+r5[2][5] = "n.c.";
+r = ICE.interpreter(r5, null, ["2024/2025"]);
+assert.strictEqual(r.lignes.length, 2);
+assert.ok(r.erreurs[0].includes("non numérique"));
 
-// 3. Un comptage manquant : aucune ligne écrite, erreur explicite.
-const g3 = g1.map((l) => l.slice(0, 5));
-r = ICE.interpreter(g3, "54", null);
+// 6. Colonne manquante : aucune ligne, erreur explicite.
+r = ICE.interpreter(rapport.map((l) => l.filter((_, k) => k !== 7)), null, null);
 assert.strictEqual(r.lignes.length, 0);
 assert.ok(r.erreurs[0].includes("périscolaire"));
 
-// 4. Valeur non numérique : ligne refusée.
-const g4 = g1.map((l) => l.slice());
-g4[4][4] = "n.c.";
-r = ICE.interpreter(g4, "54", ["2025/2026"]);
-assert.strictEqual(r.lignes.length, 0);
-assert.ok(r.erreurs[0].includes("non numérique"));
-
-// 5. Colonnes de contrôles ignorées même si elles contiennent un mot-clé.
-const g5 = [
-  ["Exercice", "Accueil avec hébergement", "Contrôles avec hébergement", "Scoutisme", "Accueil de jeunes", "Accueil de loisirs", "Périscolaire"],
-  ["2025/2026", "90", "7", "11", "3", "200", "80"]
-];
-r = ICE.interpreter(g5, "88", null);
-assert.strictEqual(r.lignes[0].Avec_hebergement, 90);
-assert.strictEqual(r.lignes[0].ASH_Periscolaire, 80);
-
-// 6. CSV avec guillemets et BOM retiré en amont, puis lecture complète via lireRapport.
-const csv = 'Exercice,"Accueil avec hébergement",Scoutisme,"Accueil de jeunes","Accueil de loisirs","Accueil périscolaire"\r\n2025/2026,"1 000",4,2,50,"30"\r\n';
-assert.deepStrictEqual(ICE.lireCsv(csv)[1], ["2025/2026", "1 000", "4", "2", "50", "30"]);
-r = ICE.lireRapport({ grilles: [[["sans rapport", "x"], ["a", "b"]]], csv }, "10", ["2025/2026"]);
-assert.deepStrictEqual(r.lignes, [{ Exercice: "2025/2026", Departement: "10", Scoutisme: 4, ASH_Jeunes: 2, ASH_Loisirs: 50, ASH_Periscolaire: 30, Avec_hebergement: 1000 }]);
-
-// 7. Rien de reconnaissable : message de diagnostic.
-r = ICE.lireRapport({ grilles: [], csv: null }, "08", null);
+// 7. lireRapport : rien de reconnaissable → message de diagnostic.
+r = ICE.lireRapport({ grilles: [[["sans rapport", "x"], ["a", "b"]]] }, null, null);
 assert.ok(r.erreurs[0].includes("diagnostic"));
 
-console.log("7 tests réussis");
+// 8. Codes départementaux.
+assert.strictEqual(ICE.codeDepartement("Meurthe-et-Moselle"), "54");
+assert.strictEqual(ICE.codeDepartement("Haut-Rhin"), "68");
+assert.strictEqual(ICE.codeDepartement("Total région"), null);
+
+console.log("8 tests réussis");

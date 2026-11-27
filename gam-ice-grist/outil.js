@@ -31,7 +31,7 @@ function journal(message, type) {
 }
 
 function verrouiller(oui) {
-  for (const id of ["btnEtat", "btnApercu", "btnTous", "btnTesterGrist", "btnEnregistrer"]) $(id).disabled = oui;
+  for (const id of ["btnEtat", "btnLire", "btnTesterGrist", "btnEnregistrer"]) $(id).disabled = oui;
   $("btnEcrire").disabled = oui || !aEcrire.length;
 }
 
@@ -82,8 +82,7 @@ async function verifierGam() {
     p.className = "etat erreur";
     throw new Error("Vous n'êtes pas connecté à GAM.");
   }
-  p.textContent = "Connecté. Département affiché : " + etat.courant + ". Départements accessibles : " +
-    etat.departements.map((d) => d.code).join(", ") + ".";
+  p.textContent = "Connecté à GAM (département affiché : " + etat.courant + ").";
   p.className = "etat ok";
   return etat;
 }
@@ -126,50 +125,37 @@ async function lignesGrist(codes) {
 }
 
 // ---------- lecture ----------
-async function lire(tousLesDepartements) {
+async function lire() {
   verrouiller(true);
   lues = [];
   aEcrire = [];
-  diagnostic = { date: new Date().toISOString(), version: chrome.runtime.getManifest().version, departements: [] };
-  $("resultat").innerHTML = "<p class='aide'>Lecture en cours…</p>";
+  diagnostic = { date: new Date().toISOString(), version: chrome.runtime.getManifest().version };
+  $("resultat").innerHTML = "<p class='aide'>Lecture en cours (le rapport peut mettre une minute à s'afficher)…</p>";
   try {
-    const etat = await verifierGam();
-    const initial = etat.courant;
-    const cibles = tousLesDepartements ? etat.departements : etat.departements.filter((d) => d.libelle === initial);
-    if (!cibles.length) throw new Error("Département affiché non reconnu : " + initial);
+    await verifierGam();
     const voulus = exercicesVoulus();
-    journal("Lecture de " + cibles.length + " département(s), exercices : " +
-      (voulus === "tous" ? "tous" : voulus.join(", ")) + ".");
-    try {
-      for (const d of cibles) {
-        if (tousLesDepartements) await gam("choisirDepartement", d.libelle);
-        const res = await gam("statsIce", { exercices: voulus });
-        const it = ICE.lireRapport(res, d.code, voulus === "tous" ? null : voulus);
-        lues.push(...it.lignes);
-        diagnostic.departements.push({
-          departement: d.libelle, code: d.code,
-          exercicesDisponibles: res.exercicesDisponibles, exercicesDemandes: res.exercicesDemandes,
-          disposition: it.disposition, correspondances: it.correspondances,
-          ambiguites: it.ambiguites, erreurs: it.erreurs, lignes: it.lignes,
-          grilles: (res.grilles || []).slice(0, 4).map((g) => g.slice(0, 30)),
-          csv: res.csv ? res.csv.slice(0, 3000) : null,
-          texte: (res.texte || "").slice(0, 1500)
-        });
-        it.ambiguites.forEach((a) => journal(d.libelle + " : " + a));
-        it.erreurs.forEach((e) => journal(d.libelle + " : " + e, "erreur"));
-        journal(d.libelle + " (" + d.code + ") : " + it.lignes.length + " exercice(s) lu(s).",
-          it.lignes.length ? "ok" : "erreur");
-      }
-    } finally {
-      if (tousLesDepartements && initial) {
-        try {
-          await gam("choisirDepartement", initial);
-          journal("Département d'origine remis dans GAM : " + initial + ".");
-        } catch (e) {
-          journal("Impossible de remettre le département d'origine : " + e.message, "erreur");
-        }
-      }
+    journal("Lecture de la statistique ICE, exercices : " + (voulus === "tous" ? "tous" : voulus.join(", ")) + "…");
+    const res = await gam("statsIce", { exercices: voulus });
+    const it = ICE.lireRapport(res, null, voulus === "tous" ? null : voulus);
+    lues = it.lignes;
+    Object.assign(diagnostic, {
+      exercicesDisponibles: res.exercicesDisponibles, exercicesDemandes: res.exercicesDemandes,
+      disposition: it.disposition, correspondances: it.correspondances,
+      avertissements: it.avertissements, erreurs: it.erreurs, nbLignes: it.lignes.length,
+      grilles: (res.grilles || []).slice(0, 4).map((g) => g.slice(0, 40)),
+      texte: (res.texte || "").slice(0, 1500)
+    });
+    if (voulus !== "tous") {
+      const absents = voulus.filter((e) => !(res.exercicesDisponibles || []).includes(e));
+      if (absents.length) journal("Exercice(s) absent(s) de GAM : " + absents.join(", ") + ".", "erreur");
     }
+    (it.avertissements || []).forEach((a) => journal(a, "erreur"));
+    it.erreurs.forEach((e) => journal(e, "erreur"));
+    const nbEx = new Set(it.lignes.map((l) => l.Exercice)).size;
+    const nbDep = new Set(it.lignes.map((l) => l.Departement)).size;
+    journal(it.lignes.length + " ligne(s) lue(s) : " + nbEx + " exercice(s), " + nbDep + " département(s)" +
+      (it.controles ? " ; total régional contrôlé pour " + it.controles + " exercice(s)." : "."),
+      it.lignes.length ? "ok" : "erreur");
     await comparer();
   } catch (e) {
     journal(e.message, "erreur");
@@ -281,8 +267,7 @@ async function initialiser() {
   });
 
   $("btnEtat").addEventListener("click", () => verifierGam().catch((e) => journal(e.message, "erreur")));
-  $("btnApercu").addEventListener("click", () => lire(false));
-  $("btnTous").addEventListener("click", () => lire(true));
+  $("btnLire").addEventListener("click", () => lire());
   $("btnEcrire").addEventListener("click", ecrire);
   $("btnDiag").addEventListener("click", async () => {
     await navigator.clipboard.writeText(JSON.stringify(diagnostic, null, 1));
