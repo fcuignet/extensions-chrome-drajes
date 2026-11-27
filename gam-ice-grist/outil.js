@@ -88,7 +88,28 @@ async function verifierGam() {
 }
 
 // ---------- Grist ----------
+// Grist refuse (403 « Credentials not supported for cross-origin requests ») toute requête
+// qui porte une clé API et une origine étrangère. Or Chrome ajoute « Origin: chrome-extension://… »
+// aux requêtes de l'extension. Cette règle retire cet en-tête, uniquement pour les requêtes
+// que l'extension elle-même envoie à Grist.
+const regleGrist = chrome.declarativeNetRequest.updateSessionRules({
+  removeRuleIds: [1],
+  addRules: [{
+    id: 1,
+    priority: 1,
+    action: { type: "modifyHeaders", requestHeaders: [{ header: "origin", operation: "remove" }] },
+    condition: {
+      requestDomains: ["getgrist.com", "grist.numerique.gouv.fr"],
+      initiatorDomains: [chrome.runtime.id],
+      resourceTypes: ["xmlhttprequest"]
+    }
+  }]
+}).catch((e) => {
+  throw new Error("Préparation des requêtes vers Grist impossible : " + e.message);
+});
+
 async function grist(chemin, options) {
+  await regleGrist;
   const c = await config();
   if (!c.apiKey) throw new Error("Clé API Grist manquante (section 2).");
   const url = c.gristUrl.replace(/\/+$/, "") + "/api/docs/" + encodeURIComponent(c.docId) + chemin;
@@ -98,8 +119,15 @@ async function grist(chemin, options) {
   });
   const texte = await r.text();
   if (!r.ok) {
-    if (r.status === 401 || r.status === 403) throw new Error("Grist refuse l'accès (clé API ou droits sur le document).");
-    throw new Error("Grist " + r.status + " : " + texte.slice(0, 200));
+    let detail = texte.slice(0, 200);
+    try { detail = JSON.parse(texte).error || detail; } catch (e) { /* réponse non JSON */ }
+    if (r.status === 401) {
+      throw new Error("Grist ne reconnaît pas la clé API (« " + detail + " »). " +
+        "Vérifiez qu'elle a été créée sur " + new URL(c.gristUrl).hostname + ", avec le compte propriétaire du document.");
+    }
+    if (r.status === 403) throw new Error("Grist refuse l'accès (« " + detail + " »).");
+    if (r.status === 404) throw new Error("Document ou table introuvable dans Grist (« " + detail + " »).");
+    throw new Error("Grist " + r.status + " : " + detail);
   }
   return texte ? JSON.parse(texte) : {};
 }
@@ -247,16 +275,22 @@ async function initialiser() {
   const c = await config();
   for (const k of Object.keys(DEFAUTS)) $(k).value = c[k];
 
-  $("btnEnregistrer").addEventListener("click", async () => {
+  // Les valeurs saisies sont enregistrées avant tout test, pour ne pas tester une ancienne clé.
+  async function enregistrer() {
     const valeurs = {};
     for (const k of Object.keys(DEFAUTS)) valeurs[k] = $(k).value.trim();
     await chrome.storage.local.set(valeurs);
+  }
+
+  $("btnEnregistrer").addEventListener("click", async () => {
+    await enregistrer();
     $("etatGrist").textContent = "Paramètres enregistrés.";
     $("etatGrist").className = "etat ok";
   });
 
   $("btnTesterGrist").addEventListener("click", async () => {
     try {
+      await enregistrer();
       const n = await testerGrist();
       $("etatGrist").textContent = "Accès à la table vérifié (" + n + " colonnes).";
       $("etatGrist").className = "etat ok";

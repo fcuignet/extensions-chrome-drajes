@@ -1,4 +1,4 @@
-# GAM → Grist · Stats ICE (version 0.2.0)
+# GAM → Grist · Stats ICE (version 0.2.1)
 
 Extension Chrome qui lit l'édition « Stats ICE » de GAM et met à jour la table `ICE_Accueils` du document Grist « ICE - Programmation des contrôles ».
 
@@ -34,6 +34,7 @@ Si le mode développeur est bloqué sur le poste académique, il faudra passer p
 - Dans Grist, elle ne fait que créer ou mettre à jour des lignes, repérées par le couple **Exercice + Département**. Elle ne supprime rien. Colonnes écrites : `Avec_hebergement`, `Scoutisme`, `ASH_Jeunes`, `ASH_Loisirs`, `ASH_Periscolaire`, `Source`.
 - Elle ne lit que des chiffres agrégés, sans donnée nominative.
 - La clé API Grist reste dans ce navigateur (stockage local de l'extension).
+- Grist refuse une clé API envoyée depuis une origine étrangère ; l'extension retire donc l'en-tête « Origin » de ses propres requêtes vers Grist (règle réseau limitée à l'extension, version 0.2.1).
 
 ## En cas de problème
 

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "GAM → Grist (Stats ICE)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Reprend la statistique ICE de GAM pour les départements accessibles et met à jour la table ICE_Accueils d'un document Grist.",
-  "permissions": ["scripting", "storage"],
+  "permissions": ["scripting", "storage", "declarativeNetRequestWithHostAccess"],
   "host_permissions": [
     "https://gam.in.phm.education.gouv.fr/*",
     "https://*.getgrist.com/*",
