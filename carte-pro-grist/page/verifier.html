@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Cartes pro des stagiaires – vérification</title>
+  <link rel="stylesheet" href="verifier.css">
+</head>
+<body>
+  <header>
+    <h1>Cartes professionnelles des stagiaires</h1>
+    <p class="sous-titre">Contrôle sur le portail public <a href="https://recherche-educateur.sports.gouv.fr/" target="_blank" rel="noopener">recherche-educateur.sports.gouv.fr</a> et mise à jour de Grist</p>
+  </header>
+
+  <main>
+    <section>
+      <h2><span class="num">1</span> Document Grist</h2>
+      <label>Adresse du document (copiée depuis la barre d'adresse)
+        <input id="urlDoc" type="url" placeholder="https://grist.numerique.gouv.fr/o/…/…">
+      </label>
+      <label>Clé API Grist (Profil → Clé API)
+        <input id="cleApi" type="password" autocomplete="off">
+      </label>
+      <div class="actions">
+        <button id="btnConnexion">Se connecter</button>
+        <span id="etatConnexion" class="etat"></span>
+      </div>
+    </section>
+
+    <section id="secTable" hidden>
+      <h2><span class="num">2</span> Table des stagiaires</h2>
+      <label>Table
+        <select id="table"></select>
+      </label>
+      <div class="grille">
+        <label>Nom de naissance <select id="colNom"></select></label>
+        <label>Nom d'usage (facultatif) <select id="colNomUsage"></select></label>
+        <label>Prénom(s) <select id="colPrenom"></select></label>
+      </div>
+      <div class="grille">
+        <label>Limiter à une session : colonne <select id="colFiltre"></select></label>
+        <label>… égale à <input id="valeurFiltre" type="text" list="listeValeurs" placeholder="choisir ou saisir un n° de session"></label>
+        <datalist id="listeValeurs"></datalist>
+      </div>
+      <p id="effectif" class="aide"></p>
+      <div id="colonnesResultat" class="encart"></div>
+    </section>
+
+    <section id="secPortail" hidden>
+      <h2><span class="num">3</span> Réglage du portail</h2>
+      <p class="aide">Prérempli avec l'appel qu'utilise le portail public. À ne modifier que si le portail change (format décrit dans le fichier LISEZMOI).</p>
+      <details>
+        <summary>Afficher le réglage</summary>
+        <textarea id="configPortail" rows="14" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="btnEnregistrerPortail" class="secondaire">Enregistrer le réglage</button>
+          <button id="btnReglageDefaut" class="secondaire">Rétablir le réglage d'origine</button>
+          <span id="etatPortail" class="etat"></span>
+        </div>
+      </details>
+      <details>
+        <summary>Tester une recherche</summary>
+        <div class="grille">
+          <label>Nom <input id="testNom" type="text"></label>
+          <label>Prénom <input id="testPrenom" type="text"></label>
+        </div>
+        <button id="btnTest" class="secondaire">Rechercher</button>
+        <pre id="resultatTest"></pre>
+      </details>
+    </section>
+
+    <section id="secLancement" hidden>
+      <h2><span class="num">4</span> Vérification</h2>
+      <div class="grille">
+        <label>Pause entre deux recherches (secondes)
+          <input id="delai" type="number" min="1" max="10" step="0.5" value="1.5">
+        </label>
+        <label class="case"><input id="ignorerRecents" type="checkbox" checked> Ignorer les stagiaires vérifiés depuis moins de 30 jours</label>
+        <label class="case"><input id="simulation" type="checkbox"> Simulation : ne rien écrire dans Grist</label>
+      </div>
+      <div class="actions">
+        <button id="btnLancer">Lancer la vérification</button>
+        <button id="btnArreter" class="secondaire" disabled>Arrêter</button>
+        <span id="etatLancement" class="etat"></span>
+      </div>
+      <progress id="progression" value="0" max="1" hidden></progress>
+      <div id="bilan" class="encart" hidden></div>
+      <table id="journal" hidden>
+        <thead><tr><th>Nom</th><th>Prénom</th><th>Statut</th><th>N° de carte</th><th>Détail</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    Les noms ne sont transmis qu'au portail du ministère et à votre document Grist. La clé API reste enregistrée dans ce navigateur.
+  </footer>
+  <script type="module" src="verifier.js"></script>
+</body>
+</html>
