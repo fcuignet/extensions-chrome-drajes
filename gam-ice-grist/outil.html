@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>GAM → Grist · Stats ICE</title>
+  <link rel="stylesheet" href="outil.css">
+</head>
+<body>
+  <header>
+    <h1>GAM → Grist · Stats ICE</h1>
+    <p>Reprend l'édition « Stats ICE » de GAM et met à jour la table <code>ICE_Accueils</code> du document Grist.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. GAM</h2>
+      <p id="etatGam" class="etat">Connexion non vérifiée.</p>
+      <button id="btnEtat" class="secondaire">Vérifier la connexion à GAM</button>
+    </section>
+
+    <section>
+      <h2>2. Grist</h2>
+      <div class="grille2">
+        <label>Adresse du site Grist <input id="gristUrl" spellcheck="false"></label>
+        <label>Identifiant du document <input id="docId" spellcheck="false"></label>
+        <label>Table <input id="table" spellcheck="false"></label>
+        <label>Clé API Grist <input id="apiKey" type="password" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <p class="aide">La clé API se trouve dans Grist : Paramètres du profil → API. Elle reste enregistrée dans ce navigateur uniquement.</p>
+      <button id="btnEnregistrer">Enregistrer</button>
+      <button id="btnTesterGrist" class="secondaire">Tester l'accès à la table</button>
+      <span id="etatGrist" class="etat"></span>
+    </section>
+
+    <section>
+      <h2>3. Lecture dans GAM</h2>
+      <fieldset>
+        <legend>Exercices à reprendre</legend>
+        <label><input type="radio" name="exercices" value="cours"> Exercice en cours (<span class="exCours"></span>)</label>
+        <label><input type="radio" name="exercices" value="deux" checked> Exercice en cours et précédent (<span class="exPrec"></span>)</label>
+        <label><input type="radio" name="exercices" value="tous"> Tous les exercices</label>
+      </fieldset>
+      <button id="btnApercu">Aperçu du département affiché dans GAM</button>
+      <button id="btnTous" class="secondaire">Lire tous les départements</button>
+      <p class="aide">« Lire tous les départements » change le département dans GAM l'un après l'autre, puis remet celui d'origine. Rien n'est écrit dans Grist à cette étape.</p>
+    </section>
+
+    <section>
+      <h2>4. Résultat et écriture</h2>
+      <div id="resultat"><p class="aide">Aucune lecture pour l'instant.</p></div>
+      <button id="btnEcrire" disabled>Écrire dans Grist</button>
+      <button id="btnDiag" class="secondaire">Copier le diagnostic</button>
+    </section>
+
+    <section>
+      <h2>Journal</h2>
+      <ol id="journal"></ol>
+    </section>
+  </main>
+
+  <script src="gam-page.js"></script>
+  <script src="interpretation.js"></script>
+  <script src="outil.js"></script>
+</body>
+</html>

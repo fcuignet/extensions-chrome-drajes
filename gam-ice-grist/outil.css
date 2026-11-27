@@ -1,0 +1,49 @@
+:root {
+  --bleu: #000091;
+  --bleu-clair: #e3e3fd;
+  --gris: #666;
+  --bord: #ddd;
+  --ok: #18753c;
+  --erreur: #ce0500;
+  --modif: #fff4d6;
+  --nouveau: #e6f4ea;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.5 Marianne, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  color: #161616;
+  background: #f6f6f6;
+}
+header { background: var(--bleu); color: #fff; padding: 1rem 2rem; }
+header h1 { margin: 0; font-size: 1.4rem; }
+header p { margin: .25rem 0 0; opacity: .9; }
+main { max-width: 1100px; margin: 0 auto; padding: 1rem 2rem 3rem; }
+section { background: #fff; border: 1px solid var(--bord); padding: 1rem 1.25rem; margin: 1rem 0; }
+h2 { margin: 0 0 .75rem; font-size: 1.1rem; color: var(--bleu); }
+.grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1rem; }
+label { display: block; margin: .25rem 0; }
+input[type=text], input:not([type]), input[type=password] {
+  display: block; width: 100%; padding: .4rem .5rem; border: 0; border-bottom: 2px solid var(--bleu);
+  background: #eee; font: inherit;
+}
+fieldset { border: 1px solid var(--bord); margin: 0 0 .75rem; }
+button {
+  font: inherit; padding: .45rem 1rem; margin: .5rem .5rem 0 0; cursor: pointer;
+  background: var(--bleu); color: #fff; border: 1px solid var(--bleu);
+}
+button.secondaire { background: #fff; color: var(--bleu); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.aide { color: var(--gris); font-size: .85rem; margin: .4rem 0; }
+.etat.ok { color: var(--ok); }
+.etat.erreur { color: var(--erreur); }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; margin: .5rem 0; }
+th, td { border: 1px solid var(--bord); padding: .3rem .45rem; text-align: right; }
+th { background: var(--bleu-clair); text-align: center; }
+td:first-child, td:nth-child(2) { text-align: left; }
+tr.modifie td { background: var(--modif); }
+tr.nouveau td { background: var(--nouveau); }
+.avant { display: block; color: var(--gris); font-size: .75rem; }
+#journal { margin: 0; padding-left: 1.5rem; font-size: .85rem; max-height: 260px; overflow: auto; }
+#journal li.erreur { color: var(--erreur); }
+#journal li.ok { color: var(--ok); }
